@@ -1,0 +1,12 @@
+{
+  "name": "n8n-core",
+  "version": "1.0.0",
+  "description": "Main n8n automation server for Abdullah",
+  "main": "index.js",
+  "scripts": {
+    "start": "n8n start"
+  },
+  "dependencies": {
+    "n8n": "^1.81.1"
+  }
+}
