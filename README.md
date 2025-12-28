@@ -1,114 +1,44 @@
-# n8n-core
+# n8n Workflows Repository
 
+## Overview
 
-## n8n Source Control Setup - SSH Deploy Key
+This repository stores **n8n workflows** for automation and deployment to the n8n platform via GitHub Actions.
 
-This repository is configured for bidirectional synchronization with n8n using SSH Deploy Keys.
+## Repository Structure
 
-### Prerequisites
+- **`/workflows`** - n8n workflow JSON files (exported from n8n UI)
+- **`/.github/workflows`** - GitHub Actions CI/CD workflows for deploying to n8n API  
+- **`/scripts`** - Utility scripts for workflow management and deployment
 
-- n8n instance running (self-hosted)
-- SSH access to the n8n server
-- Git installed on the n8n server
+## Deployment
 
-### Step 1: Generate SSH Key on n8n Server
+### How It Works
 
-SSH into your n8n server and execute these commands:
+1. Workflows are exported as JSON files and committed to the `/workflows` directory
+2. GitHub Actions triggers on push to `main` branch
+3. Workflows are automatically deployed to n8n via the [n8n API](https://docs.n8n.io/api/)
+4. Credentials and sensitive data are stored in [GitHub Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 
-```bash
-# Create SSH directory for n8n user
-mkdir -p /home/n8n/.ssh
-chmod 700 /home/n8n/.ssh
+### GitHub Secrets Configuration
 
-# Generate Ed25519 SSH key (recommended)
-ssh-keygen -t ed25519 \
-  -f /home/n8n/.ssh/n8n_github_deploy_key \
-  -C "n8n-source-control-$(date +%Y%m%d)" \
-  -N ""
+Set up the following secrets in repository settings:
 
-# Set proper permissions
-chmod 600 /home/n8n/.ssh/n8n_github_deploy_key
-chmod 644 /home/n8n/.ssh/n8n_github_deploy_key.pub
+- `N8N_API_URL` - Your n8n instance API endpoint (e.g., `http://your-n8n-instance:5678`)
+- `N8N_API_KEY` - Your n8n API key for authentication
 
-# Display public key for next step
-cat /home/n8n/.ssh/n8n_github_deploy_key.pub
-```
+## Workflow Management
 
-### Step 2: Add Public Key to GitHub Deploy Keys
+### Export Workflows from n8n UI
 
-1. Copy the output from the command above (entire public key)
-2. Go to: https://github.com/abaranovskydako-tech/n8n-core/settings/keys
-3. Click "Add deploy key"
-4. Set Title: `n8n-source-control-prod`
-5. Paste the public key
-6. **Enable**: "Allow write access" (checkbox)
-7. Click "Add key"
+1. Open your n8n workflow
+2. Click **Menu** → **Download as JSON**
+3. Save to `/workflows` directory
+4. Commit and push to trigger deployment
 
-### Step 3: Configure SSH Config
+### Import from Repository
 
-Add this to `/home/n8n/.ssh/config`:
+Use the n8n import feature or deploy via API calls from GitHub Actions.
 
-```bash
-cat >> /home/n8n/.ssh/config << 'EOF'
+---
 
-Host github.com
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/n8n_github_deploy_key
-    IdentitiesOnly yes
-    StrictHostKeyChecking accept-new
-EOF
-
-chmod 600 /home/n8n/.ssh/config
-```
-
-### Step 4: Test SSH Connection
-
-```bash
-# Test the connection
-ssh -i /home/n8n/.ssh/n8n_github_deploy_key -T git@github.com
-
-# Expected output:
-# Hi abaranovskydako-tech/n8n-core! You've successfully authenticated, but GitHub does not provide shell access.
-```
-
-### Step 5: Configure n8n Source Control
-
-1. Log in to n8n as owner/admin
-2. Go to **Settings → Environments → Source control**
-3. Fill in:
-   - **Repository URL**: `git@github.com:abaranovskydako-tech/n8n-core.git`
-   - **Authentication Type**: SSH
-   - **SSH Key Path**: `/home/n8n/.ssh/n8n_github_deploy_key`
-   - **Branch**: `main` (or your preferred branch)
-4. Click "Save"
-5. Test the connection
-
-### Step 6: Initial Synchronization
-
-```bash
-# In n8n UI, go to Source Control and:
-# 1. Click "Pull" to sync from GitHub (if needed)
-# 2. Click "Push" to export current workflows to GitHub
-```
-
-### Bidirectional Sync Workflow
-
-- **Edit in UI n8n** → Save → **Push to GitHub**
-- **Edit in GitHub** → PR/Merge → **Pull in n8n**
-- **Conflict resolution**: Resolve in GitHub, then pull in n8n
-
-### Troubleshooting
-
-**SSH connection refused**: Ensure deploy key is added to GitHub with write access
-
-**Permission denied**: Check SSH key permissions (should be 600)
-
-**Cannot authenticate**: Verify the SSH config and key path in n8n settings
-
-### Security Notes
-
-- Keep private key (`n8n_github_deploy_key`) secure
-- Never commit private keys to Git
-- Deploy keys are repository-specific (not global)
-- Rotate keys periodically for security
+# n8n-ядро
