@@ -1,4 +1,26 @@
 # n8n Workflows Repository
+![Deploy Workflows](https://github.com/abaranovskydako-tech/n8n-core/actions/workflows/deploy-workflows.yml/badge.svg)
+
+## CI/CD Status
+
+This project uses **GitHub Actions** to automatically deploy n8n workflows to the n8n instance at `http://91.229.8.119:5678`.
+
+- **Workflow File**: `.github/workflows/deploy-workflows.yml`
+- **Deploy Script**: `scripts/deploy_workflows.js`
+- **Status**: ✅ All deployments successful
+- **Last Deployment**: Test Workflow (Updated)
+- **Deployment Mode**: Safe (workflows deploy as `active: false`)
+
+### How It Works
+
+1. Push changes to the `main` branch
+2. GitHub Actions triggers the `Deploy n8n Workflows` workflow
+3. Node.js environment is set up
+4. Deploy script executes:
+   - Reads all JSON files from the `./workflows` directory
+   - Sends them to the n8n API via PUT/POST requests
+   - Reports success or failure for each workflow
+5. Workflow status is displayed in the GitHub Actions tab
 
 ## Overview
 
