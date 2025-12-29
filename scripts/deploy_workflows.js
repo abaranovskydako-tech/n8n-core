@@ -93,7 +93,7 @@ async function deployWorkflow(filePath) {
         name: workflow.name,
         nodes: workflow.nodes,
         connections: workflow.connections,
-        active: false,
+        
         settings: workflow.settings || {}
       };
       
