@@ -1,5 +1,6 @@
 {
   "name": "Test Workflow",
+    "description": "A simple test workflow with manual trigger and HTTP request",
   "nodes": [
     {
       "parameters": {},
