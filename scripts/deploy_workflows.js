@@ -111,7 +111,7 @@ async function deployWorkflow(filePath) {
       const options = {
         ...baseOptions,
         path: `/api/v1/workflows/${existing.id}`,
-        method: 'PUT'
+        method: 'PATCH'
       };
       workflow.active = false; // Never activate automatically
       
