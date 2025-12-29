@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -12,7 +11,6 @@ const WORKFLOWS_DIR = './workflows';
 const results = {
   created: [],
   updated: [],
-  skipped: [],
   errors: []
 };
 
@@ -21,19 +19,16 @@ if (!N8N_HOST || !N8N_API_KEY) {
   process.exit(1);
 }
 
-function parseUrl(url) {
-  const parsed = new URL(url);
-  return {
-    protocol: parsed.protocol === 'https:' ? https : http,
-    hostname: parsed.hostname,
-    port: parsed.port,
-    path: parsed.pathname
-  };
+// Helper function to ensure URL has protocol
+function ensureProtocol(urlString) {
+  if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+    return 'http://' + urlString;
+  }
+  return urlString;
 }
 
-function makeRequest(options, body = null) {
+function makeRequest(protocol, options, body = null) {
   return new Promise((resolve, reject) => {
-    const protocol = options.protocol;
     const req = protocol.request(options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
@@ -53,21 +48,23 @@ function makeRequest(options, body = null) {
 }
 
 async function getWorkflowByName(name) {
-  const url = new URL(N8N_HOST);
-  const options = {
-    protocol: url.protocol === 'https:' ? https : http,
-    hostname: url.hostname,
-    port: url.port || (url.protocol === 'https:' ? 443 : 80),
-    path: `/api/v1/workflows?name=${encodeURIComponent(name)}`,
-    method: 'GET',
-    headers: {
-      'X-N8N-API-KEY': N8N_API_KEY,
-      'Content-Type': 'application/json'
-    }
-  };
-  
   try {
-    const response = await makeRequest(options);
+    const urlString = ensureProtocol(N8N_HOST);
+    const url = new URL(urlString);
+    const protocol = url.protocol === 'https:' ? https : http;
+    
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: `/api/v1/workflows?name=${encodeURIComponent(name)}`,
+      method: 'GET',
+      headers: {
+        'X-N8N-API-KEY': N8N_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    };
+    
+    const response = await makeRequest(protocol, options);
     if (response.status === 401 || response.status === 403) {
       throw new Error(`Authentication failed (${response.status}): Invalid API key`);
     }
@@ -96,11 +93,13 @@ async function deployWorkflow(filePath) {
     // Check if workflow exists
     const existing = await getWorkflowByName(workflow.name || fileName);
     
-    const url = new URL(N8N_HOST);
+    const urlString = ensureProtocol(N8N_HOST);
+    const url = new URL(urlString);
+    const protocol = url.protocol === 'https:' ? https : http;
+    
     const baseOptions = {
-      protocol: url.protocol === 'https:' ? https : http,
       hostname: url.hostname,
-      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      port: url.port,
       headers: {
         'X-N8N-API-KEY': N8N_API_KEY,
         'Content-Type': 'application/json'
@@ -116,7 +115,7 @@ async function deployWorkflow(filePath) {
       };
       workflow.active = false; // Never activate automatically
       
-      const response = await makeRequest(options, workflow);
+      const response = await makeRequest(protocol, options, workflow);
       if (response.status === 200) {
         results.updated.push(fileName);
         console.log(`✅ Updated: ${fileName}`);
@@ -132,7 +131,7 @@ async function deployWorkflow(filePath) {
       };
       workflow.active = false; // Never activate automatically
       
-      const response = await makeRequest(options, workflow);
+      const response = await makeRequest(protocol, options, workflow);
       if (response.status === 201) {
         results.created.push(fileName);
         console.log(`✨ Created: ${fileName}`);
@@ -171,13 +170,13 @@ async function main() {
   
   // Print summary
   console.log('\n📊 Deployment Summary:');
-  console.log(`   Created: ${results.created.length}`);
-  console.log(`   Updated: ${results.updated.length}`);
-  console.log(`   Errors: ${results.errors.length}`);
+  console.log(` Created: ${results.created.length}`);
+  console.log(` Updated: ${results.updated.length}`);
+  console.log(` Errors: ${results.errors.length}`);
   
   if (results.errors.length > 0) {
     console.log('\n❌ Errors:');
-    results.errors.forEach(e => console.log(`   - ${e.file}: ${e.error}`));
+    results.errors.forEach(e => console.log(` - ${e.file}: ${e.error}`));
     process.exit(1);
   }
   
