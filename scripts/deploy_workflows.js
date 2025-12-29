@@ -101,7 +101,7 @@ async function deployWorkflow(filePath) {
         hostname: url.hostname,
         port: url.port,
         path: `/api/v1/workflows/${existing.id}`,
-        method: 'PATCH',
+        method: 'PUT',
         headers
       };
       
