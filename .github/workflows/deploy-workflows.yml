@@ -1,0 +1,32 @@
+name: Deploy n8n Workflows
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'workflows/*.json'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    env:
+      N8N_HOST: ${{ secrets.N8N_HOST }}
+      N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Run deployment script
+        run: node scripts/deploy_workflows.js
+        env:
+          N8N_HOST: ${{ secrets.N8N_HOST }}
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
