@@ -3,12 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
-
 let N8N_HOST = process.env.N8N_HOST || '';
 const N8N_API_KEY = process.env.N8N_API_KEY;
 const WORKFLOWS_DIR = './workflows';
-
-const results = { created: [], errors: [] };
+const results = { created: [], updated: [], errors: [] };
 
 if (!N8N_HOST || !N8N_API_KEY) {
   console.error('❌ ERROR: N8N_HOST or N8N_API_KEY is not set');
@@ -37,37 +35,104 @@ function makeRequest(protocol, options, body = null) {
   });
 }
 
-async function deployWorkflow(filePath) {
-  const fileName = path.basename(filePath, '.json');
+async function getWorkflowByName(name) {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const workflow = JSON.parse(content);
-    workflow.active = false;
-
     const url = new URL(N8N_HOST);
     const protocol = url.protocol === 'https:' ? https : http;
     
     const options = {
       hostname: url.hostname,
       port: url.port,
-      path: '/api/v1/workflows',
-      method: 'POST',
+      path: `/api/v1/workflows?name=${encodeURIComponent(name)}`,
+      method: 'GET',
       headers: {
         'X-N8N-API-KEY': N8N_API_KEY,
         'Content-Type': 'application/json'
       }
     };
+    
+    const response = await makeRequest(protocol, options);
+    if (response.status === 200 && response.body.data && response.body.data.length > 0) {
+      return response.body.data[0];
+    }
+    return null;
+  } catch (error) {
+    console.error(`⚠️ Failed to fetch workflow: ${error.message}`);
+    return null;
+  }
+}
 
-    const response = await makeRequest(protocol, options, workflow);
-    if (response.status === 201) {
-      results.created.push(fileName);
-      console.log(`✅ Created: ${workflow.name || fileName}`);
+async function deployWorkflow(filePath) {
+  const fileName = path.basename(filePath, '.json');
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const workflow = JSON.parse(content);
+    workflow.active = false;
+    
+    const url = new URL(N8N_HOST);
+    const protocol = url.protocol === 'https:' ? https : http;
+    
+    const headers = {
+      'X-N8N-API-KEY': N8N_API_KEY,
+      'Content-Type': 'application/json'
+    };
+    
+    // Try to find existing workflow by name
+    const existing = await getWorkflowByName(workflow.name || fileName);
+    
+    if (existing) {
+      // UPDATE: PATCH request for existing workflow
+      if (!existing.id) {
+        console.log(`⚠️ Workflow ${workflow.name} missing ID — skipping update.`);
+        results.errors.push({ file: fileName, error: 'Workflow ID not found' });
+        return;
+      }
+      
+      // Construct updateData with only necessary fields
+      const updateData = {
+        name: workflow.name,
+        nodes: workflow.nodes,
+        connections: workflow.connections,
+        active: false,
+        settings: workflow.settings || {}
+      };
+      
+      const options = {
+        hostname: url.hostname,
+        port: url.port,
+        path: `/api/v1/workflows/${existing.id}`,
+        method: 'PATCH',
+        headers
+      };
+      
+      const response = await makeRequest(protocol, options, updateData);
+      if (response.status === 200) {
+        results.updated.push(fileName);
+        console.log(`✅ Updated: ${workflow.name || fileName}`);
+      } else {
+        throw new Error(`PATCH failed with status ${response.status}: ${response.body?.message || 'Unknown error'}`);
+      }
     } else {
-      throw new Error(`Create failed with status ${response.status}`);
+      // CREATE: POST request for new workflow
+      const options = {
+        hostname: url.hostname,
+        port: url.port,
+        path: '/api/v1/workflows',
+        method: 'POST',
+        headers
+      };
+      
+      const response = await makeRequest(protocol, options, workflow);
+      if (response.status === 201) {
+        results.created.push(fileName);
+        console.log(`✨ Created: ${workflow.name || fileName}`);
+      } else {
+        throw new Error(`POST failed with status ${response.status}: ${response.body?.message || 'Unknown error'}`);
+      }
     }
   } catch (error) {
     results.errors.push({ file: fileName, error: error.message });
-    console.error(`⚠️ Error [${fileName}]: ${error.message}`);
+    console.error(`❌ Error [${fileName}]: ${error.message}`);
   }
 }
 
@@ -94,6 +159,7 @@ async function main() {
   
   console.log('\n📊 Deployment Summary:');
   console.log(` Created: ${results.created.length}`);
+  console.log(` Updated: ${results.updated.length}`);
   console.log(` Errors: ${results.errors.length}`);
   
   if (results.errors.length > 0) {
