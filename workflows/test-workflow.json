@@ -21,7 +21,7 @@
       "id": "2",
       "name": "HTTP Request",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
+      "typeVersion": 4,
       "position": [
         450,
         300
