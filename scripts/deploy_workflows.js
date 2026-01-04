@@ -121,6 +121,7 @@ async function deployWorkflow(filePath) {
         method: 'POST',
         headers
       };
+           delete workflow.active;
       
       const response = await makeRequest(protocol, options, workflow);
       if (response.status === 201) {
